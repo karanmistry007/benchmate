@@ -86,7 +86,7 @@ app_license = "agpl-3.0"
 # ------------
 
 # before_install = "benchmate.install.before_install"
-# after_install = "benchmate.install.after_install"
+after_install = "benchmate.api.sync.after_install"
 
 # Uninstallation
 # ------------
