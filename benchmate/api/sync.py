@@ -1,6 +1,7 @@
 import ast
 import configparser
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -9,41 +10,386 @@ import frappe
 from benchmate.api.utils import get_benchmate_settings
 
 
+# ! benchmate.api.sync.enqueue_sync_bench_details
 @frappe.whitelist()
-def sync():
+def enqueue_sync_bench_details():
 	"""
-	Sync and return list of all valid benches under default_path
-	as configured in BenchMate settings.
+	Enqueue the `sync_bench_details` function to run asynchronously using Frappe's background jobs.
+
+	Queue: default
+	Timeout: 600 seconds
+
+	Usage:
+	Called to process bench syncing in the background without blocking the main thread.
+	"""
+	try:
+		# ? Enqueue the sync_bench_details task in Frappe background queue
+		frappe.enqueue(sync_bench_details, queue="default", timeout=600)
+	except Exception as e:
+		# ? If enqueue fails, return error status
+		return {
+			"success": False,
+			"message": f"Failed to enqueue bench sync: {e!s}",
+			"data": None,
+		}
+	else:
+		# ? On success, return success message
+		return {
+			"success": True,
+			"message": "Bench sync task enqueued successfully.",
+			"data": {"queued_function": "sync_bench_details"},
+		}
+
+
+# ! benchmate.api.sync.sync_bench_details
+@frappe.whitelist()
+def sync_bench_details():
+	"""
+	Sync all benches found under the default path into the 'BM Bench' DocType.
+
+	Workflow:
+	- Creates a new Bench record if it does not exist.
+	- Updates fields if the Bench already exists.
+	- Marks Bench as "Error" if any error was captured during sync.
+	- Syncs installed apps into BM App and BM Bench doctypes.
+	- Syncs sites into BM Site doctype.
+
+	Returns:
+	dict: {
+	"success": bool,
+	"message": str,
+	"data": {
+	    "updated_benches": list[str],   # names of updated Bench docs
+	    "updated_apps": list[str],      # names of updated App docs
+	    "updated_sites": list[str],     # names of updated Site docs
+	} | None
+	}
+	"""
+	try:
+		# ? Get default benches path from settings
+		settings = get_benchmate_settings()
+		default_path = settings.get("default_path", "/home/karan/benches/")
+
+		# ? Gather all benches under the default path
+		benches = get_all_benches(default_path)
+		updated_benches, updated_apps, updated_sites = [], [], []
+
+		# ? Process each bench and sync into DocType
+		for bench in benches:
+			bench_name = bench["bench_name"]
+
+			# ? Create or fetch BM Bench doc
+			bench_doc = (
+				frappe.get_doc("BM Bench", bench_name)
+				if frappe.db.exists("BM Bench", bench_name)
+				else frappe.new_doc("BM Bench")
+			)
+
+			# ? If error, set status as "Error" and capture details
+			if bench.get("is_error", False):
+				bench_doc.update(
+					{
+						"status": "Error",
+						"error_message": bench.get("error_message"),
+						"last_synced_on": frappe.utils.now(),
+						"bench_name": bench_name,
+						"path": bench.get("path"),
+						"branch": bench.get("branch"),
+						"version": bench.get("version"),
+					}
+				)
+
+			# ? If no error, update valid bench details
+			else:
+				bench_doc.update(
+					{
+						"bench_name": bench_name,
+						"path": bench.get("path"),
+						"branch": bench.get("branch"),
+						"version": bench.get("version"),
+						"error_message": None,
+						"last_synced_on": frappe.utils.now(),
+					}
+				)
+
+				# ? Manage installed apps
+				if bench.get("installed_apps"):
+					# ? Sync installed apps in BM Apps & BM Bench doctypes
+					bench_doc, synced_apps = sync_app_details(bench_doc, bench.get("installed_apps"))
+
+					# ? Track updated apps if any changes were made
+					if synced_apps:
+						updated_apps.extend(synced_apps)
+
+			# ? Save or update the Bench document
+			bench_doc.save(ignore_permissions=True)
+			updated_benches.append(bench_doc.get("name"))
+
+			# ? Manage sites of the bench
+			if bench.get("sites"):
+				synced_sites = sync_site_details(bench_doc, bench.get("sites"))
+
+				# ? Track updated sites if any changes were made
+				if synced_sites:
+					updated_sites.extend(synced_sites)
+
+			# ? Deduplicate lists
+			updated_benches = list(set(updated_benches))
+			updated_apps = list(set(updated_apps))
+			updated_sites = list(set(updated_sites))
+
+	except Exception as e:
+		# ? Rollback in case of failure
+		frappe.db.rollback()
+
+		# ? Prepare error log
+		message = "Error In Bench Sync"
+		data = {
+			"updated_benches": updated_benches if "updated_benches" in locals() else [],
+			"updated_apps": updated_apps if "updated_apps" in locals() else [],
+			"updated_sites": updated_sites if "updated_sites" in locals() else [],
+		}
+
+		# ? Log sync error
+		frappe.get_doc(
+			{
+				"doctype": "BM Sync Log",
+				"title": message,
+				"status": "Error",
+				"log": json.dumps(data, indent=4),
+			}
+		).insert()
+		frappe.log_error(message, str(e))
+
+		# ? Commit the BM Sync Log
+		frappe.db.commit()
+
+		return {
+			"success": False,
+			"message": f"Bench sync failed: {e!s}",
+			"data": None,
+		}
+
+	else:
+		# ? Prepare success log
+		message = "Benches synced successfully."
+		data = {
+			"updated_benches": updated_benches,
+			"updated_apps": updated_apps,
+			"updated_sites": updated_sites,
+		}
+
+		# ? Log sync success
+		frappe.get_doc(
+			{
+				"doctype": "BM Sync Log",
+				"title": message,
+				"status": "Success",
+				"log": json.dumps(data, indent=4),
+			}
+		).insert()
+
+		# ? Commit the changes if success
+		frappe.db.commit()
+
+		# ? Show UI message
+		frappe.msgprint(msg=message, alert=True)
+
+		return {
+			"success": True,
+			"message": message,
+			"data": data,
+		}
+
+
+def sync_app_details(bench_doc, installed_apps: dict):
+	"""
+	Sync installed apps into the 'BM App' and 'BM Bench' DocTypes.
+
+	Workflow:
+	- Clears and resets `installed_apps` table in the BM Bench doc.
+	- Creates a BM App record if it does not exist.
+	- Updates fields if the App already exists.
+	- Saves only if there are changes.
+
+	Args:
+		bench_doc (Document): The BM Bench document being updated.
+		installed_apps (dict): Dictionary of installed apps with details.
+
+	Returns:
+		tuple:
+			- bench_doc (Document): Updated BM Bench document with installed apps.
+			- updated (list[str]): List of updated BM App names.
+	"""
+	updated = []
+
+	# ? Reset installed_apps table in Bench doc
+	bench_doc.installed_apps = []
+
+	# ? Process each installed app
+	for app in installed_apps.values():
+		is_dirty = False
+		app_name = app.get("app_name")
+
+		# ? Create or fetch BM App doc
+		app_doc = (
+			frappe.get_doc("BM App", app_name)
+			if frappe.db.exists("BM App", app_name)
+			else frappe.new_doc("BM App")
+		)
+
+		# ? Update app_name if changed
+		if app_doc.get("app_name") != app_name:
+			app_doc.update({"app_name": app_name})
+			is_dirty = True
+
+		# ? Update app_title if changed
+		if app_doc.get("app_title") != app.get("app_title"):
+			app_doc.update({"app_title": app.get("app_title")})
+			is_dirty = True
+
+		# ? Update link if changed
+		if app_doc.get("link") != app.get("link"):
+			app_doc.update({"link": app.get("link")})
+			is_dirty = True
+
+		# ? Save BM App only if changes were made
+		if is_dirty:
+			app_doc.save(ignore_permissions=True)
+			updated.append(app_doc.get("name"))
+
+		# ? Add app details to installed_apps table in Bench doc
+		bench_doc.append(
+			"installed_apps",
+			{
+				"app_name": app_name,
+				"app_title": app.get("app_title"),
+				"branch": app.get("branch"),
+				"version": app.get("version"),
+				"link": app.get("link"),
+				"commit": app.get("commit"),
+			},
+		)
+
+	return bench_doc, updated
+
+
+def sync_site_details(bench_doc, sites):
+	"""
+	Sync site details for a given bench into BM Site doctype.
+
+	Args:
+		bench_doc (dict): Bench document details containing bench_name, status, etc.
+		sites (dict): Dictionary of sites under this bench with keys like site_name, path, installed_apps.
+
+	Returns:
+		list: List of BM Site document names that were created/updated.
+	"""
+	updated = []
+
+	for site in sites.values():
+		# ? Generate unique BM Site name using bench + site_name
+		site_name_key = f"{bench_doc.get('bench_name')}-{site.get('site_name')}"
+
+		# ? Fetch existing BM Site doc or create a new one if it doesn't exist
+		site_doc = (
+			frappe.get_doc("BM Site", site_name_key)
+			if frappe.db.exists("BM Site", site_name_key)
+			else frappe.new_doc("BM Site")
+		)
+
+		# ? Update core site details
+		site_doc.update(
+			{
+				"site_name": site.get("site_name"),
+				"bench_name": bench_doc.get("bench_name"),
+				"status": bench_doc.get("status"),
+				"path": site.get("path"),
+				"last_synced_on": frappe.utils.now(),
+			}
+		)
+
+		# ? Reset installed_apps child table before inserting fresh entries
+		site_doc.installed_apps = []
+
+		# ? Loop through installed apps for this site and append them to child table
+		for app in site.get("installed_apps").values():
+			site_doc.append(
+				"installed_apps",
+				{
+					"app_name": app.get("app_name"),
+					"app_title": app.get("app_title"),
+					"branch": app.get("branch"),
+					"version": app.get("version"),
+					"link": app.get("link"),
+					"commit": app.get("commit"),
+				},
+			)
+
+		# ? Save or update BM Site document
+		site_doc.save()
+
+		# ? Track updated/created site record name
+		updated.append(site_doc.get("name"))
+
+	# ? Return list of updated site document names
+	return updated
+
+
+# ! benchmate.api.sync.test_sync
+@frappe.whitelist()
+def test_sync():
+	"""
+	Sync and return list of all valid benches under the default_path
+	configured in BenchMate settings.
+
+	Returns:
+		list[dict]: List of bench metadata with sites and installed apps.
 	"""
 	settings = get_benchmate_settings()
 	default_path = settings.get("default_path", "/home/karan/benches/")
 	return get_all_benches(default_path)
 
 
-# -------------------------------------------------------------
+# ? -------------------------------------------------------------
 # ? Utility functions
-# -------------------------------------------------------------
-def run_cmd(cmd: str, cwd: Path | None = None) -> str | None:
+# ? -------------------------------------------------------------
+def run_cmd(cmd: str, cwd: Path | None = None) -> tuple[str | None, str | None]:
 	"""
-	Execute a shell command and return stdout as string.
-	Returns None if the command fails.
+	Execute a shell command.
+
+	Args:
+		cmd (str): Command to run.
+		cwd (Path | None): Directory to execute in.
+
+	Returns:
+		tuple: (stdout, None) if success, else (None, error_message).
 	"""
 	try:
-		return subprocess.check_output(cmd, cwd=cwd, shell=True, text=True, stderr=subprocess.STDOUT).strip()
+		out = subprocess.check_output(cmd, cwd=cwd, shell=True, text=True, stderr=subprocess.STDOUT).strip()
+		return out, None
 	except subprocess.CalledProcessError as e:
+		error_message = e.output.strip() if e.output else str(e)
 		frappe.log_error(f"Command failed: {cmd}\n{e.output}", "BenchMate run_cmd")
-		return None
+		return None, error_message
 
 
 def get_git_remote(app_path: Path) -> str | None:
 	"""
-	Extract repo URL from .git/config (prefer upstream → origin).
+	Get the Git remote URL for a given app.
+	Checks upstream first, then origin.
+
+	Args:
+		app_path (Path): Path to app directory.
+
+	Returns:
+		str | None: Remote repo URL if found.
 	"""
 	git_config = app_path / ".git" / "config"
 	if not git_config.exists():
 		return None
 
-	config = configparser.ConfigParser()
+	config = configparser.ConfigParser(strict=False)  # ? allow duplicate keys
 	try:
 		config.read(git_config)
 		if config.has_section('remote "upstream"'):
@@ -55,12 +401,18 @@ def get_git_remote(app_path: Path) -> str | None:
 	return None
 
 
-# -------------------------------------------------------------
+# ? -------------------------------------------------------------
 # ? App title extraction
-# -------------------------------------------------------------
+# ? -------------------------------------------------------------
 def _parse_hooks_title(hooks_path: Path) -> str | None:
 	"""
-	Parse hooks.py safely using AST to extract app_title.
+	Extract app_title from hooks.py using AST.
+
+	Args:
+		hooks_path (Path): Path to hooks.py.
+
+	Returns:
+		str | None: app_title if found.
 	"""
 	if not hooks_path.exists():
 		return None
@@ -80,18 +432,24 @@ def _parse_hooks_title(hooks_path: Path) -> str | None:
 
 def _parse_pyproject_name(pyproject_path: Path) -> str | None:
 	"""
-	Read project/app name from pyproject.toml ([project] or [tool.poetry]).
+	Extract project/app name from pyproject.toml.
+	Supports [project] and [tool.poetry].
+
+	Args:
+		pyproject_path (Path): Path to pyproject.toml.
+
+	Returns:
+		str | None: Name if found.
 	"""
 	if not pyproject_path.exists():
 		return None
 	try:
-		# ? Python 3.11+ has tomllib in stdlib
 		try:
 			import tomllib  # type: ignore
 
 			data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
 		except Exception:
-			# ? Fallback: very naive parsing for "name ="
+			# ? Fallback: naive text parsing
 			raw = pyproject_path.read_text(encoding="utf-8")
 			for line in raw.splitlines():
 				if line.strip().startswith("name"):
@@ -100,7 +458,6 @@ def _parse_pyproject_name(pyproject_path: Path) -> str | None:
 						return val
 			return None
 
-		# ? PEP 621 & poetry fallback
 		if "project" in data and isinstance(data["project"], dict):
 			return data["project"].get("name")
 		if "tool" in data and isinstance(data["tool"], dict):
@@ -115,103 +472,196 @@ def _parse_pyproject_name(pyproject_path: Path) -> str | None:
 
 def get_app_title(app_path: Path, app_name: str) -> str:
 	"""
-	Best-effort app title resolution:
-	1. hooks.py (app_title)
-	2. pyproject.toml (project.name / poetry.name)
-	3. Fallback: prettified app_name
+	Resolve a human-readable app title.
+
+	Order:
+	1. hooks.py → app_title
+	2. pyproject.toml → name
+	3. fallback: prettified app_name
+
+	Args:
+		app_path (Path): Path to app folder.
+		app_name (str): Name of app.
+
+	Returns:
+		str: App title.
 	"""
-	# ? hooks.py
 	hooks_title = _parse_hooks_title(app_path / app_name / "hooks.py")
 	if hooks_title:
 		return hooks_title
 
-	# ? pyproject.toml
 	pyproject_name = _parse_pyproject_name(app_path / "pyproject.toml")
 	if pyproject_name:
 		return pyproject_name.replace("-", " ").replace("_", " ").title()
 
-	# ? fallback: format folder name
 	return app_name.replace("-", " ").replace("_", " ").title()
 
 
-# -------------------------------------------------------------
+# ? -------------------------------------------------------------
 # ? Bench & site parsing
-# -------------------------------------------------------------
-def parse_installed_apps(entry: Path) -> tuple[dict, str | None, str | None]:
+# ? -------------------------------------------------------------
+def _robust_load_json_array(raw: str):
 	"""
-	Parse bench-wide installed apps via `bench version --format json`.
+	Try to parse output as JSON/array safely.
+	Handles garbage before/after JSON.
+
+	Args:
+		raw (str): Raw CLI output.
+
 	Returns:
-	- installed_apps dict
-	- frappe_version
-	- frappe_branch
+		Any: Parsed JSON object/list.
+	"""
+	try:
+		return json.loads(raw)
+	except Exception:
+		pass
+
+	# ? Try substring extraction
+	start = raw.find("[")
+	end = raw.rfind("]")
+	if start != -1 and end != -1 and end > start:
+		try:
+			sub = raw[start : end + 1]
+			return json.loads(sub)
+		except Exception:
+			pass
+
+	# ? Last fallback: literal_eval
+	try:
+		return ast.literal_eval(raw)
+	except Exception:
+		raise ValueError("Unable to parse bench version output as JSON/pyliteral")
+
+
+def parse_installed_apps(entry: Path) -> tuple[dict, str | None, str | None, str | None]:
+	"""
+	Parse installed apps for a bench.
+
+	Args:
+		entry (Path): Path to bench directory.
+
+	Returns:
+		tuple: (apps_dict, frappe_version, frappe_branch, error_message)
 	"""
 	installed_apps = {}
-	frappe_version, frappe_branch = None, None
+	frappe_version, frappe_branch, error_message = None, None, None
 
-	version_json = run_cmd("bench version --format json", cwd=entry)
+	version_json, err = run_cmd("bench version --format json", cwd=entry)
+	if err:
+		return installed_apps, None, None, f"{entry} - bench version --format json - {err}"
+
 	if not version_json:
-		return installed_apps, None, None
+		return installed_apps, None, None, None
 
 	try:
-		apps_data = json.loads(version_json)
-		if isinstance(apps_data, list):
-			for app in apps_data:
-				app_name = app.get("app")
-				app_branch = app.get("branch")
-				app_version = app.get("version")
-				app_commit = app.get("commit")
-
-				app_path = entry / "apps" / app_name
-				app_repo = get_git_remote(app_path)
-				app_title = get_app_title(app_path, app_name)
-
-				installed_apps[app_name] = {
-					"title": app_title,
-					"branch": app_branch,
-					"version": app_version,
-					"commit": app_commit,
-					"repo": app_repo,
-				}
-
-				# ? store frappe version/branch separately
-				if app_name == "frappe":
-					frappe_version, frappe_branch = app_version, app_branch
+		apps_data = _robust_load_json_array(version_json)
 	except Exception as e:
-		frappe.log_error(f"Failed to parse bench version json: {e}", "BenchMate Sync")
+		frappe.log_error(f"bench version returned non-JSON output for {entry}: {e}", "BenchMate Sync")
+		return installed_apps, None, None, None
 
-	return installed_apps, frappe_version, frappe_branch
+	# ? Normalize structure
+	try:
+		if isinstance(apps_data, dict):
+			found_list = None
+			for v in apps_data.values():
+				if isinstance(v, list):
+					found_list = v
+					break
+			apps = found_list or []
+		elif isinstance(apps_data, list | tuple):
+			apps = list(apps_data)
+		else:
+			apps = []
+	except Exception:
+		apps = []
+
+	# ? Collect app details
+	try:
+		for app in apps:
+			if not isinstance(app, dict):
+				continue
+			app_name = app.get("app")
+			if not app_name:
+				continue
+			app_branch = app.get("branch")
+			app_version = app.get("version")
+			app_commit = app.get("commit")
+
+			app_path = entry / "apps" / app_name
+			app_repo = get_git_remote(app_path)
+			app_title = get_app_title(app_path, app_name)
+
+			installed_apps[app_name] = {
+				"app_name": app_name,
+				"app_title": app_title,
+				"branch": app_branch,
+				"version": app_version,
+				"commit": app_commit,
+				"link": app_repo,
+			}
+
+			if app_name == "frappe":
+				frappe_version, frappe_branch = app_version, app_branch
+	except Exception as e:
+		frappe.log_error(f"Unexpected error while processing bench apps for {entry}: {e}", "BenchMate Sync")
+
+	return installed_apps, frappe_version, frappe_branch, error_message
 
 
-def get_site_apps(bench_path: Path, site_name: str, bench_apps: dict) -> dict:
+def get_site_apps(bench_path: Path, site_name: str, bench_apps: dict) -> tuple[dict, str | None]:
 	"""
-	Get installed apps for a specific site using:
-	`bench --site <site> list-apps --format json`
-	Filter against bench-wide apps metadata.
+	Get installed apps for a site within a bench.
+
+	Args:
+		bench_path (Path): Path to bench.
+		site_name (str): Name of site.
+		bench_apps (dict): Available bench apps metadata.
+
+	Returns:
+		tuple: (site_apps, error_message)
 	"""
 	cmd = f"bench --site {site_name} list-apps --format json"
-	result = run_cmd(cmd, cwd=bench_path)
+	result, err = run_cmd(cmd, cwd=bench_path)
+
+	if err:
+		return {}, f"{bench_path} - {cmd} - {err}"
+
 	if not result:
-		return {}
+		return {}, None
 
 	site_apps = {}
 	try:
-		data = json.loads(result)
-		for app_name in data.get(site_name, []):
+		# ? Use robust parser (handles stray output)
+		data = _robust_load_json_array(result)
+
+		if isinstance(data, dict):
+			app_list = data.get(site_name) or next((v for v in data.values() if isinstance(v, list)), [])
+		elif isinstance(data, list):
+			app_list = data
+		else:
+			app_list = []
+
+		for app_name in app_list or []:
 			if app_name in bench_apps:
 				site_apps[app_name] = bench_apps[app_name]
-	except Exception as e:
-		frappe.log_error(f"Failed to parse site apps for {site_name}: {e}", "BenchMate Sync")
 
-	return site_apps
+	except Exception as e:
+		frappe.log_error(
+			f"{cmd} returned invalid JSON for site {site_name}: {e}\nRaw Output:\n{result}", "BenchMate Sync"
+		)
+
+	return site_apps, None
 
 
 def get_all_benches(default_path: str):
 	"""
-	Return list of all valid benches under default_path.
-	Each bench includes:
-	- frappe version & branch
-	- installed apps metadata
-	- detailed sites with site-specific installed apps
+	Scan a given path and return all valid benches with metadata.
+
+	Args:
+		default_path (str): Root benches path.
+
+	Returns:
+		list[dict]: List of benches with their sites, apps, and status.
 	"""
 	benches: list[dict] = []
 	root = Path(default_path).expanduser().resolve()
@@ -227,37 +677,81 @@ def get_all_benches(default_path: str):
 		sites_path = entry / "sites"
 		procfile_path = entry / "Procfile"
 
-		# ? validate bench structure
+		# ? Identify valid bench (must have sites/ + Procfile)
 		if not (sites_path.is_dir() and procfile_path.is_file()):
 			continue
 
-		# ? Bench apps & frappe version/branch
-		bench_apps, frappe_version, frappe_branch = parse_installed_apps(entry)
+		is_error = False
+		error_message = None
 
-		# ? Sites metadata
-		sites = []
+		bench_apps, frappe_version, frappe_branch, err = parse_installed_apps(entry)
+		if err:
+			is_error, error_message = True, err
+
+		sites = {}
 		for s in sites_path.iterdir():
 			if s.is_dir() and s.name != "assets":
-				site_apps = get_site_apps(entry, s.name, bench_apps)
-				sites.append(
-					{
-						"site_name": s.name,
-						"bench_name": entry.name,
-						"path": str(s),
-						"installed_apps": site_apps,
-					}
-				)
+				site_apps, site_err = get_site_apps(entry, s.name, bench_apps)
+				if site_err and not error_message:
+					is_error, error_message = True, site_err
+				sites[s.name] = {
+					"site_name": s.name,
+					"bench_name": entry.name,
+					"path": str(s),
+					"installed_apps": site_apps,
+				}
 
-		# ? final bench info
 		benches.append(
 			{
-				"name": entry.name,
+				"bench_name": entry.name,
 				"path": str(entry),
-				"version": frappe_version,
 				"branch": frappe_branch,
+				"version": frappe_version,
 				"sites": sites,
 				"installed_apps": bench_apps,
+				"is_error": is_error,
+				"error_message": error_message,
 			}
 		)
 
 	return benches
+
+
+# ! benchmate.api.sync.after_install
+@frappe.whitelist()
+def after_install():
+	"""
+	Runs after app installation.
+	Sets the default bench path in BM Settings.
+	"""
+	# ? Set the default bench path in BM Settings after installation
+	set_default_bench_path()
+
+
+def set_default_bench_path():
+	"""
+	Updates the 'default_path' field in BM Settings with the current bench directory.
+	"""
+	# ? Get the current bench directory
+	default_bench_path = get_current_bench_dir()
+
+	# ? Update the BM Settings DocType with the default path
+	frappe.db.set_value("BM Settings", "BM Settings", "default_path", default_bench_path)
+
+
+def get_current_bench_dir():
+	"""
+	Returns the current bench directory.
+
+	Workflow:
+	- Fetches the path to the 'frappe' app
+	- Moves up directories to get the bench root
+	"""
+	# ? Get the path to the 'frappe' app within the current bench
+	frappe_app_path = frappe.get_app_source_path("frappe")
+
+	# ? Move up three directories to reach the root bench folder
+	current_bench_path = os.path.abspath(os.path.join(frappe_app_path, "../../../"))
+
+	# ? Return the bench directory path
+	return current_bench_path

@@ -16,7 +16,9 @@
   "section_break_gudv",
   "installed_apps",
   "section_break_vxsq",
-  "description"
+  "description",
+  "section_break_oxtw",
+  "error_message"
  ],
  "fields": [
   {
@@ -82,6 +84,16 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Branch"
+  },
+  {
+   "fieldname": "section_break_oxtw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.status===\"Error\";",
+   "fieldname": "error_message",
+   "fieldtype": "Long Text",
+   "label": "Error Message"
   }
  ],
  "grid_page_length": 50,
@@ -93,7 +105,7 @@
    "link_fieldname": "bench_name"
   }
  ],
- "modified": "2025-08-17 21:32:33.248615",
+ "modified": "2025-08-18 01:17:09.426283",
  "modified_by": "Administrator",
  "module": "BenchMate",
  "name": "BM Bench",
@@ -133,5 +145,6 @@
    "color": "Red",
    "title": "Error"
   }
- ]
+ ],
+ "track_changes": 1
 }
