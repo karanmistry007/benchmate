@@ -264,11 +264,12 @@ def parse_installed_apps(entry: Path) -> tuple[dict, str | None, str | None, str
 			app_title = get_app_title(app_path, app_name)
 
 			installed_apps[app_name] = {
-				"title": app_title,
+				"app_name": app_name,
+				"app_title": app_title,
 				"branch": app_branch,
 				"version": app_version,
 				"commit": app_commit,
-				"repo": app_repo,
+				"link": app_repo,
 			}
 
 			if app_name == "frappe":
@@ -376,7 +377,7 @@ def get_all_benches(default_path: str):
 
 		benches.append(
 			{
-				"name": entry.name,
+				"bench_name": entry.name,
 				"path": str(entry),
 				"version": frappe_version,
 				"branch": frappe_branch,
