@@ -79,7 +79,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-17 20:11:26.287364",
+ "modified": "2025-08-18 01:17:13.172040",
  "modified_by": "Administrator",
  "module": "BenchMate",
  "name": "BM Site",
@@ -120,5 +120,6 @@
    "title": "Error"
   }
  ],
- "title_field": "site_name"
+ "title_field": "site_name",
+ "track_changes": 1
 }
