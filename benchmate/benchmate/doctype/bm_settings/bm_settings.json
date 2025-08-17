@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-08-17 18:30:32.160642",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable",
+  "section_break_mlox",
+  "default_path",
+  "column_break_wpgn",
+  "sudo_password",
+  "db_password",
+  "section_break_vypk",
+  "description"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable",
+   "fieldtype": "Check",
+   "label": "Enable"
+  },
+  {
+   "depends_on": "eval:doc.enable;",
+   "fieldname": "sudo_password",
+   "fieldtype": "Password",
+   "label": "Sudo Password",
+   "mandatory_depends_on": "eval:doc.enable;"
+  },
+  {
+   "depends_on": "eval:doc.enable;",
+   "fieldname": "db_password",
+   "fieldtype": "Password",
+   "label": "DB Password",
+   "mandatory_depends_on": "eval:doc.enable;"
+  },
+  {
+   "depends_on": "eval:doc.enable;",
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "depends_on": "eval:doc.enable;",
+   "fieldname": "section_break_mlox",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_wpgn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.enable;",
+   "fieldname": "section_break_vypk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.enable;",
+   "fieldname": "default_path",
+   "fieldtype": "Data",
+   "label": "Default Path",
+   "mandatory_depends_on": "eval:doc.enable;"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-08-17 19:26:10.857742",
+ "modified_by": "Administrator",
+ "module": "BenchMate",
+ "name": "BM Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

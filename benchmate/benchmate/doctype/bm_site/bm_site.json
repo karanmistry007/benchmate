@@ -1,0 +1,124 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{bench_name}-{site_name}",
+ "creation": "2025-08-17 19:38:39.197387",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "site_name",
+  "bench_name",
+  "path",
+  "column_break_isdw",
+  "status",
+  "last_synced_on",
+  "section_break_wkhj",
+  "installed_apps",
+  "section_break_wtxd",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "path",
+   "fieldtype": "Data",
+   "label": "Path"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nActive\nUpdating\nDisabled\nError"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "last_synced_on",
+   "fieldtype": "Datetime",
+   "label": "Last Synced On"
+  },
+  {
+   "fieldname": "column_break_isdw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_wtxd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "site_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Site Name"
+  },
+  {
+   "fieldname": "bench_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bench Name",
+   "options": "BM Bench"
+  },
+  {
+   "fieldname": "section_break_wkhj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "installed_apps",
+   "fieldtype": "Table",
+   "label": "Installed Apps",
+   "options": "BM Installed Apps"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-17 20:11:26.287364",
+ "modified_by": "Administrator",
+ "module": "BenchMate",
+ "name": "BM Site",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Green",
+   "title": "Active "
+  },
+  {
+   "color": "Blue",
+   "title": "Updating "
+  },
+  {
+   "color": "Gray",
+   "title": "Disabled "
+  },
+  {
+   "color": "Red",
+   "title": "Error"
+  }
+ ],
+ "title_field": "site_name"
+}
