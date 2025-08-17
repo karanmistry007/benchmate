@@ -1,0 +1,76 @@
+{
+ "app": "benchmate",
+ "charts": [],
+ "content": "[{\"id\":\"E4TboPQAiW\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">BenchMate</span>\",\"col\":12}},{\"id\":\"pckRgVGLCJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Bench\",\"col\":3}},{\"id\":\"uIKLe2weO2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Site\",\"col\":3}},{\"id\":\"1zPvETmYcy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM App\",\"col\":3}},{\"id\":\"OdX7vGpNVa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Sync Log\",\"col\":3}},{\"id\":\"Zlbft996Gt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Settings\",\"col\":3}}]",
+ "creation": "2025-08-18 03:30:43.609066",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "setting-gear",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "BenchMate",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2025-08-18 03:34:53.200507",
+ "modified_by": "Administrator",
+ "module": "BenchMate",
+ "name": "BenchMate",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 23.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "BM Bench",
+   "link_to": "BM Bench",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "BM Site",
+   "link_to": "BM Site",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "BM App",
+   "link_to": "BM App",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "BM Sync Log",
+   "link_to": "BM Sync Log",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "BM Settings",
+   "link_to": "BM Settings",
+   "type": "DocType"
+  }
+ ],
+ "title": "BenchMate",
+ "type": "Workspace"
+}
