@@ -108,7 +108,7 @@ def stop_port(port, is_linux):
 
 
 @frappe.whitelist()
-def stop_bench(bench_name: str, bench_path: str):
+def execute(bench_name: str, bench_path: str):
 	"""
 	API method to stop bench services for the bench located at the given path.
 

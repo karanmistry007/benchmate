@@ -38,26 +38,89 @@ function addBenchActions(frm) {
 	);
 }
 
-// ? Function to handle Create Site action
 function createSite(frm) {
-	frappe.call({
-		method: "benchmate.api.create_site",
-		args: { bench_path: frm.doc.bench_path },
-		callback: function (r) {
-			// ? Show response message from backend
-			frappe.msgprint(r.message);
+	let d = new frappe.ui.Dialog({
+		title: __("Create New Site"),
+		fields: [
+			{
+				fieldtype: "Data",
+				label: __("Site Name"),
+				fieldname: "site_name",
+				reqd: 1,
+			},
+		],
+		primary_action_label: __("Create"),
+		primary_action(values) {
+			d.hide();
+			frappe.call({
+				method: "benchmate.api.actions.create_site.execute",
+				args: {
+					bench_path: frm.doc.path,
+					site_name: values.site_name,
+				},
+				freeze: true,
+				freeze_message: `Creating Site ${values.site_name}...`,
+				callback: function (r) {
+					// ? If success show success message
+					if (r.message.success) {
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "green",
+							},
+							5
+						);
+					}
+
+					// ? If error show error message
+					else {
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "red",
+							},
+							5
+						);
+					}
+				},
+			});
 		},
 	});
+	d.show();
 }
 
 // ? Function to handle Start Bench action
 function startBench(frm) {
 	frappe.call({
-		method: "benchmate.api.start_bench",
-		args: { bench_path: frm.doc.bench_path },
+		method: "benchmate.api.actions.bench_start.execute",
+		args: {
+			bench_name: frm.doc.name,
+			bench_path: frm.doc.path,
+		},
+		freeze: true,
+		freeze_message: "Starting Bench...",
 		callback: function (r) {
-			// ? Show response message from backend
-			frappe.msgprint(r.message);
+			// ? If success show success message
+			if (r.message.success) {
+				frappe.show_alert(
+					{
+						message: __(r.message.message),
+						indicator: "green",
+					},
+					5
+				);
+			}
+
+			// ? If error show error message
+			else {
+				frappe.show_alert(
+					{
+						message: __(r.message.message),
+						indicator: "red",
+					},
+					5
+				);
+			}
 		},
 	});
 }
@@ -65,7 +128,7 @@ function startBench(frm) {
 // ? Function to handle Stop Bench action
 function stopBench(frm) {
 	frappe.call({
-		method: "benchmate.api.actions.bench_stop.stop_bench",
+		method: "benchmate.api.actions.bench_stop.execute",
 		args: {
 			bench_name: frm.doc.name,
 			bench_path: frm.doc.path,

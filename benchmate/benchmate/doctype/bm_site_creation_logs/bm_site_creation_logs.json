@@ -1,24 +1,26 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:BM-SL-{#}",
- "creation": "2025-08-18 01:20:36.254906",
+ "autoname": "format:{site_name}-{log_timestamp}",
+ "creation": "2025-08-27 02:56:40.293176",
  "doctype": "DocType",
- "engine": "MyISAM",
+ "engine": "InnoDB",
  "field_order": [
-  "title",
-  "column_break_nerx",
+  "site_name",
+  "column_break_bkvd",
   "status",
-  "section_break_djza",
+  "log_timestamp",
+  "section_break_jlrx",
   "log"
  ],
  "fields": [
   {
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Title",
-   "read_only": 1
+   "fieldname": "column_break_bkvd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_jlrx",
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "log",
@@ -28,30 +30,40 @@
    "read_only": 1
   },
   {
-   "default": "Error",
+   "default": "In Process",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
-   "options": "\nError\nSuccess\nLog",
+   "options": "\nIn Process\nSuccess\nError",
    "read_only": 1
   },
   {
-   "fieldname": "column_break_nerx",
-   "fieldtype": "Column Break"
+   "fieldname": "site_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Site Name",
+   "read_only": 1
   },
   {
-   "fieldname": "section_break_djza",
-   "fieldtype": "Section Break"
+   "fieldname": "log_timestamp",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Log Timestamp",
+   "read_only": 1,
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-27 03:00:11.397603",
+ "modified": "2025-08-27 03:39:40.158232",
  "modified_by": "Administrator",
  "module": "BenchMate",
- "name": "BM Sync Log",
+ "name": "BM Site Creation Logs",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
@@ -73,18 +85,18 @@
  "sort_order": "DESC",
  "states": [
   {
-   "color": "Red",
-   "title": "Error"
+   "color": "Blue",
+   "title": "In Process"
   },
   {
    "color": "Green",
    "title": "Success"
   },
   {
-   "color": "Blue",
-   "title": "Log"
+   "color": "Red",
+   "title": "Error"
   }
  ],
- "title_field": "title",
+ "title_field": "site_name",
  "track_seen": 1
 }
