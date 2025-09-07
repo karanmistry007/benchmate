@@ -1,7 +1,7 @@
 {
  "app": "benchmate",
  "charts": [],
- "content": "[{\"id\":\"E4TboPQAiW\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">BenchMate</span>\",\"col\":12}},{\"id\":\"pckRgVGLCJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Bench\",\"col\":3}},{\"id\":\"uIKLe2weO2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Site\",\"col\":3}},{\"id\":\"1zPvETmYcy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM App\",\"col\":3}},{\"id\":\"OdX7vGpNVa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Sync Log\",\"col\":3}},{\"id\":\"CZYPa4MOMK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bm Site Creation Logs\",\"col\":3}},{\"id\":\"Zlbft996Gt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Settings\",\"col\":3}}]",
+ "content": "[{\"id\":\"E4TboPQAiW\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">BenchMate</span>\",\"col\":12}},{\"id\":\"pckRgVGLCJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Bench\",\"col\":3}},{\"id\":\"uIKLe2weO2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Site\",\"col\":3}},{\"id\":\"1zPvETmYcy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM App\",\"col\":3}},{\"id\":\"OdX7vGpNVa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Sync Log\",\"col\":3}},{\"id\":\"CZYPa4MOMK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bm Site Creation Logs\",\"col\":3}},{\"id\":\"5GjUZsGiN_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bm Site Deletion Logs\",\"col\":3}},{\"id\":\"Zlbft996Gt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BM Settings\",\"col\":3}}]",
  "creation": "2025-08-18 03:30:43.609066",
  "custom_blocks": [],
  "docstatus": 0,
@@ -15,7 +15,7 @@
  "label": "BenchMate",
  "link_type": "DocType",
  "links": [],
- "modified": "2025-09-07 21:22:03.176848",
+ "modified": "2025-09-07 23:42:31.333942",
  "modified_by": "Administrator",
  "module": "BenchMate",
  "name": "BenchMate",
@@ -41,6 +41,14 @@
    "format": "{}",
    "label": "BM Bench",
    "link_to": "BM Bench",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Bm Site Deletion Logs",
+   "link_to": "BM Site Deletion Logs",
    "stats_filter": "[]",
    "type": "DocType"
   },

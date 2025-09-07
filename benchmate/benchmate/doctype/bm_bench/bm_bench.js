@@ -19,6 +19,15 @@ function addBenchActions(frm) {
 		__("Actions")
 	);
 
+	// ? Add "Drop Site" button and pair it with handler
+	frm.add_custom_button(
+		__("Drop Site"),
+		function () {
+			dropSite(frm);
+		},
+		__("Actions")
+	);
+
 	// ? Add "Start Bench" button and pair it with handler
 	frm.add_custom_button(
 		__("Start Bench"),
@@ -39,7 +48,7 @@ function addBenchActions(frm) {
 }
 
 function createSite(frm) {
-	let d = new frappe.ui.Dialog({
+	let dialog = new frappe.ui.Dialog({
 		title: __("Create New Site"),
 		fields: [
 			{
@@ -51,7 +60,7 @@ function createSite(frm) {
 		],
 		primary_action_label: __("Create"),
 		primary_action(values) {
-			d.hide();
+			dialog.hide();
 			frappe.call({
 				method: "benchmate.api.actions.create_site.execute",
 				args: {
@@ -87,7 +96,7 @@ function createSite(frm) {
 			});
 		},
 	});
-	d.show();
+	dialog.show();
 }
 
 // ? Function to handle Start Bench action
@@ -160,4 +169,101 @@ function stopBench(frm) {
 			}
 		},
 	});
+}
+
+// ? Function to handle the Drop Site action from BM Bench form
+function dropSite(frm) {
+	// ? Create a dialog box for site selection and drop confirmation
+	let dialog = new frappe.ui.Dialog({
+		title: __("Drop A Site"),
+
+		// ? Fields inside the dialog
+		fields: [
+			{
+				label: __("Site"), // ? BM Site link field
+				fieldname: "site",
+				fieldtype: "Link",
+				options: "BM Site",
+				reqd: 1,
+				get_query: function () {
+					// ? Restrict sites only for the current bench
+					return {
+						filters: [["bench_name", "=", frm.doc.name]],
+					};
+				},
+				onchange: function () {
+					// ? On site selection, fetch the actual site_name
+					let site = dialog.get_value("site");
+					if (site) {
+						frappe.call({
+							method: "frappe.client.get_value",
+							args: {
+								doctype: "BM Site",
+								filters: { name: site },
+								fieldname: ["site_name"],
+							},
+							freeze: true,
+							freeze_message: __(`Fetching Site Name...`),
+							callback: function (response) {
+								// ? Auto-populate the readonly Site Name field
+								dialog.set_value("site_name", response.message.site_name);
+							},
+						});
+					}
+				},
+			},
+			{
+				label: __("Site Name"), // ? Read-only field to confirm exact site_name
+				fieldname: "site_name",
+				fieldtype: "Data",
+				read_only: 1,
+				reqd: 1,
+			},
+		],
+
+		// ? Primary action button: Drop Site
+		primary_action_label: __("Drop"),
+		primary_action(values) {
+			// ? Hide dialog after confirmation
+			dialog.hide();
+
+			// ? Call server-side method to drop the site
+			frappe.call({
+				method: "benchmate.api.actions.drop_site.execute",
+				args: {
+					bench_name: frm.doc.name, // ? Current bench name
+					bench_path: frm.doc.path, // ? Bench path
+					site_name: values.site_name, // ? Site selected to drop
+				},
+				freeze: true,
+				freeze_message: __(`Dropping Site ${values.site_name}...`),
+
+				// ? Handle callback after server execution
+				callback: function (r) {
+					if (r.message.success) {
+						// ? Show success message on site drop
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "green",
+							},
+							5
+						);
+					} else {
+						// ? Show error message if failed
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "red",
+							},
+							5
+						);
+					}
+				},
+			});
+		},
+	});
+
+	// ? Display the dialog to the user
+	dialog.show();
 }
