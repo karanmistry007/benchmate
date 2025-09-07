@@ -55,6 +55,7 @@ function createSite(frm) {
 			frappe.call({
 				method: "benchmate.api.actions.create_site.execute",
 				args: {
+					bench_name: frm.doc.name,
 					bench_path: frm.doc.path,
 					site_name: values.site_name,
 				},
