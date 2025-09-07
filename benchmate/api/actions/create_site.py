@@ -9,11 +9,11 @@ from benchmate.api.utils import get_benchmate_settings
 
 def update_log_status(docname, new_text=None, status=None):
 	"""
-	? Update the BM Site Creation Logs record for a given docname.
+	? Update the BM Log record for a given docname.
 	? Appends log text and/or updates the status field, committing immediately.
 	"""
 	try:
-		log_doc = frappe.get_doc("BM Site Creation Logs", docname)
+		log_doc = frappe.get_doc("BM Log", docname)
 
 		# ? Append new log text if provided
 		if new_text:
@@ -27,7 +27,7 @@ def update_log_status(docname, new_text=None, status=None):
 		frappe.db.commit()
 		log_doc.reload()
 	except Exception as e:
-		frappe.log_error(f"Error updating BM Site Creation Logs: {e}", "BenchMate SiteCreationLogs")
+		frappe.log_error(f"Error updating BM Log: {e}", "BenchMate SiteCreationLogs")
 
 
 def create_site_background(
@@ -35,23 +35,24 @@ def create_site_background(
 ):
 	"""
 	Background task to create a new Frappe site inside a given bench.
-	Captures real-time logs into BM Site Creation Logs doctype,
+	Captures real-time logs into BM Log doctype,
 	and cleans up temporary log files after completion.
 	"""
 	bench_path = os.path.abspath(bench_path)
 	log_file = os.path.join(bench_path, f"bench_new_site_{site_name}.log")
 
-	# ? Create a unique BM Site Creation Logs record for tracking
+	# ? Create a unique BM Log record for tracking
 	log_timestamp = int(time.time())
-	log_name = f"{site_name}-{log_timestamp}"
-	if not frappe.db.exists("BM Site Creation Logs", log_name):
+	log_name = f"Create Site-{log_timestamp}"
+	if not frappe.db.exists("BM Log", log_name):
 		frappe.get_doc(
 			{
-				"doctype": "BM Site Creation Logs",
-				"site_name": site_name,
+				"doctype": "BM Log",
+				"title": f"Create Site - {site_name}",
 				"log": "",
 				"log_timestamp": log_timestamp,
 				"status": "In Process",
+				"action": "Create Site",
 			}
 		).insert(ignore_permissions=True)
 		frappe.db.commit()
@@ -85,7 +86,7 @@ def create_site_background(
 		proc.stdin.flush()
 		proc.stdin.close()
 
-	# ? Tail the log file and update BM Site Creation Logs in real-time
+	# ? Tail the log file and update BM Log in real-time
 	try:
 		with open(log_file) as f:
 			f.seek(0, os.SEEK_END)  # ? Move to end for live tailing
@@ -233,6 +234,6 @@ def execute(bench_name: str, bench_path: str, site_name: str):
 
 	return {
 		"success": True,
-		"message": f"Creating <b>{site_name}</b> in background Check <b>BM Site Creation Logs</b> for more details.",
-		"data": {"bench_path": bench_path},
+		"message": f"Creating <b>{site_name}</b> in background Check <b>BM Log</b> for more details.",
+		"data": None,
 	}

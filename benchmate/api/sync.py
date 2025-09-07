@@ -3,6 +3,7 @@ import configparser
 import json
 import os
 import subprocess
+import time
 from pathlib import Path
 
 import frappe
@@ -153,15 +154,17 @@ def sync_bench_details():
 		# ? Log sync error
 		frappe.get_doc(
 			{
-				"doctype": "BM Sync Log",
+				"doctype": "BM Log",
 				"title": message,
 				"status": "Error",
 				"log": json.dumps(data, indent=4),
+				"log_timestamp": int(time.time()),
+				"action": "Sync",
 			}
 		).insert()
 		frappe.log_error(message, str(e))
 
-		# ? Commit the BM Sync Log
+		# ? Commit the BM Log
 		frappe.db.commit()
 
 		return {
@@ -172,7 +175,7 @@ def sync_bench_details():
 
 	else:
 		# ? Prepare success log
-		message = "Benches synced successfully."
+		message = "Benches synced successfully"
 		data = {
 			"updated_benches": updated_benches,
 			"updated_apps": updated_apps,
@@ -182,10 +185,12 @@ def sync_bench_details():
 		# ? Log sync success
 		frappe.get_doc(
 			{
-				"doctype": "BM Sync Log",
+				"doctype": "BM Log",
 				"title": message,
 				"status": "Success",
 				"log": json.dumps(data, indent=4),
+				"log_timestamp": int(time.time()),
+				"action": "Sync",
 			}
 		).insert()
 

@@ -9,11 +9,11 @@ from benchmate.api.utils import get_benchmate_settings
 
 def update_deletion_log_status(docname, new_text=None, status=None):
 	"""
-	? Update the BM Site Deletion Logs record for a given docname.
+	? Update the BM Log record for a given docname.
 	? Appends log text and/or updates the status field, committing immediately.
 	"""
 	try:
-		log_doc = frappe.get_doc("BM Site Deletion Logs", docname)
+		log_doc = frappe.get_doc("BM Log", docname)
 
 		# ? Append new log text if provided
 		if new_text:
@@ -27,7 +27,7 @@ def update_deletion_log_status(docname, new_text=None, status=None):
 		frappe.db.commit()
 		log_doc.reload()
 	except Exception as e:
-		frappe.log_error(f"Error updating BM Site Deletion Logs: {e}", "BenchMate SiteDeletionLogs")
+		frappe.log_error(f"Error updating BM Log: {e}", "BenchMate SiteDeletionLogs")
 
 
 def drop_site_background(
@@ -35,23 +35,24 @@ def drop_site_background(
 ):
 	"""
 	Background task to drop (delete) a Frappe site inside a given bench.
-	Captures real-time logs into BM Site Deletion Logs doctype,
+	Captures real-time logs into BM Log doctype,
 	and cleans up temporary log files after completion.
 	"""
 	bench_path = os.path.abspath(bench_path)
 	log_file = os.path.join(bench_path, f"bench_drop_site_{site_name}.log")
 
-	# ? Create a unique BM Site Deletion Logs record for tracking
+	# ? Create a unique BM Log record for tracking
 	log_timestamp = int(time.time())
-	log_name = f"{site_name}-{log_timestamp}"
-	if not frappe.db.exists("BM Site Deletion Logs", log_name):
+	log_name = f"Drop Site-{log_timestamp}"
+	if not frappe.db.exists("BM Log", log_name):
 		frappe.get_doc(
 			{
-				"doctype": "BM Site Deletion Logs",
-				"site_name": site_name,
+				"doctype": "BM Log",
+				"title": f"Drop Site - {site_name}",
 				"log": "",
 				"log_timestamp": log_timestamp,
 				"status": "In Process",
+				"action": "Drop Site",
 			}
 		).insert(ignore_permissions=True)
 		frappe.db.commit()
@@ -103,7 +104,7 @@ def drop_site_background(
 				)
 				return
 
-		# ? Tail the log file and update BM Site Deletion Logs in real-time
+		# ? Tail the log file and update BM Log in real-time
 		with open(log_file) as f:
 			f.seek(0, os.SEEK_SET)
 			# ? Stream entire log file content to document
@@ -200,7 +201,7 @@ def execute(bench_name: str, bench_path: str, site_name: str):
 		"success": True,
 		"message": (
 			f"Deleting site <b>{site_name}</b> in the background. "
-			f"Check the <b>BM Site Deletion Logs</b> for more details."
+			f"Check the <b>BM Log</b> for more details."
 		),
-		"data": {"bench_path": bench_path},
+		"data": None,
 	}

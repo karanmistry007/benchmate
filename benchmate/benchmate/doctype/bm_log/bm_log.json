@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{site_name}-{log_timestamp}",
- "creation": "2025-09-07 23:41:44.865581",
+ "autoname": "format:{action}-{log_timestamp}",
+ "creation": "2025-09-08 00:09:25.552471",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "site_name",
+  "title",
+  "action",
   "column_break_bkvd",
   "status",
   "log_timestamp",
@@ -14,14 +15,6 @@
   "log"
  ],
  "fields": [
-  {
-   "fieldname": "site_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Site Name",
-   "read_only": 1
-  },
   {
    "fieldname": "column_break_bkvd",
    "fieldtype": "Column Break"
@@ -40,7 +33,6 @@
    "fieldname": "log_timestamp",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Log Timestamp",
    "read_only": 1,
    "unique": 1
@@ -55,15 +47,32 @@
    "in_list_view": 1,
    "label": "Log",
    "read_only": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Title",
+   "read_only": 1
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Action",
+   "options": "Other\nSync\nCreate Site\nDrop Site\nBackup Site\nRestore Site\nStart Bench\nStop Bench",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-07 23:41:44.865581",
+ "modified": "2025-09-08 00:20:53.335826",
  "modified_by": "Administrator",
  "module": "BenchMate",
- "name": "BM Site Deletion Logs",
+ "name": "BM Log",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
@@ -97,6 +106,6 @@
    "title": "Error"
   }
  ],
- "title_field": "site_name",
+ "title_field": "title",
  "track_seen": 1
 }

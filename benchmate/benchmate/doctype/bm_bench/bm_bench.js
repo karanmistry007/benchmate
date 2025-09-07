@@ -28,6 +28,24 @@ function addBenchActions(frm) {
 		__("Actions")
 	);
 
+	// ? Add "Backup Site" button and pair it with handler
+	frm.add_custom_button(
+		__("Backup Site"),
+		function () {
+			backupSite(frm);
+		},
+		__("Actions")
+	);
+
+	// ? Add "Restore Site" button and pair it with handler
+	frm.add_custom_button(
+		__("Restore Site"),
+		function () {
+			restoreSite(frm);
+		},
+		__("Actions")
+	);
+
 	// ? Add "Start Bench" button and pair it with handler
 	frm.add_custom_button(
 		__("Start Bench"),
@@ -47,6 +65,7 @@ function addBenchActions(frm) {
 	);
 }
 
+// ? Function to handle Cerate Site action
 function createSite(frm) {
 	let dialog = new frappe.ui.Dialog({
 		title: __("Create New Site"),
@@ -180,7 +199,7 @@ function dropSite(frm) {
 		// ? Fields inside the dialog
 		fields: [
 			{
-				label: __("Site"), // ? BM Site link field
+				label: __("Site"),
 				fieldname: "site",
 				fieldtype: "Link",
 				options: "BM Site",
@@ -213,7 +232,7 @@ function dropSite(frm) {
 				},
 			},
 			{
-				label: __("Site Name"), // ? Read-only field to confirm exact site_name
+				label: __("Site Name"),
 				fieldname: "site_name",
 				fieldtype: "Data",
 				read_only: 1,
@@ -231,12 +250,236 @@ function dropSite(frm) {
 			frappe.call({
 				method: "benchmate.api.actions.drop_site.execute",
 				args: {
-					bench_name: frm.doc.name, // ? Current bench name
-					bench_path: frm.doc.path, // ? Bench path
-					site_name: values.site_name, // ? Site selected to drop
+					bench_name: frm.doc.name,
+					bench_path: frm.doc.path,
+					site_name: values.site_name,
 				},
 				freeze: true,
 				freeze_message: __(`Dropping Site ${values.site_name}...`),
+
+				// ? Handle callback after server execution
+				callback: function (r) {
+					if (r.message.success) {
+						// ? Show success message on site drop
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "green",
+							},
+							5
+						);
+					} else {
+						// ? Show error message if failed
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "red",
+							},
+							5
+						);
+					}
+				},
+			});
+		},
+	});
+
+	// ? Display the dialog to the user
+	dialog.show();
+}
+
+// ? Function to handle the Backup Site action from BM Bench form
+function backupSite(frm) {
+	// ? Create a dialog box for site selection and backup confirmation
+	let dialog = new frappe.ui.Dialog({
+		title: __("Backup A Site"),
+
+		// ? Fields inside the dialog
+		fields: [
+			{
+				label: __("Site"),
+				fieldname: "site",
+				fieldtype: "Link",
+				options: "BM Site",
+				reqd: 1,
+				get_query: function () {
+					// ? Restrict sites only for the current bench
+					return {
+						filters: [["bench_name", "=", frm.doc.name]],
+					};
+				},
+				onchange: function () {
+					// ? On site selection, fetch the actual site_name
+					let site = dialog.get_value("site");
+					if (site) {
+						frappe.call({
+							method: "frappe.client.get_value",
+							args: {
+								doctype: "BM Site",
+								filters: { name: site },
+								fieldname: ["site_name"],
+							},
+							freeze: true,
+							freeze_message: __(`Fetching Site Name...`),
+							callback: function (response) {
+								// ? Auto-populate the readonly Site Name field
+								dialog.set_value("site_name", response.message.site_name);
+							},
+						});
+					}
+				},
+			},
+			{
+				label: __("Site Name"),
+				fieldname: "site_name",
+				fieldtype: "Data",
+				read_only: 1,
+				reqd: 1,
+			},
+		],
+
+		// ? Primary action button: Backup Site
+		primary_action_label: __("Backup"),
+		primary_action(values) {
+			// ? Hide dialog after confirmation
+			dialog.hide();
+
+			// ? Call server-side method to backup the site
+			frappe.call({
+				method: "benchmate.api.actions.backup_site.execute",
+				args: {
+					bench_name: frm.doc.name,
+					bench_path: frm.doc.path,
+					site_name: values.site_name,
+				},
+				freeze: true,
+				freeze_message: __(`Taking Backup Of Site ${values.site_name}...`),
+
+				// ? Handle callback after server execution
+				callback: function (r) {
+					if (r.message.success) {
+						// ? Show success message on site drop
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "green",
+							},
+							5
+						);
+					} else {
+						// ? Show error message if failed
+						frappe.show_alert(
+							{
+								message: __(r.message.message),
+								indicator: "red",
+							},
+							5
+						);
+					}
+				},
+			});
+		},
+	});
+
+	// ? Display the dialog to the user
+	dialog.show();
+}
+
+// ? Function to handle the Restore Site action from BM Bench form
+function restoreSite(frm) {
+	// ? Create a dialog box for site selection and restore confirmation
+	let dialog = new frappe.ui.Dialog({
+		title: __("Restore A Site"),
+
+		// ? Fields inside the dialog
+		fields: [
+			{
+				label: __("Site"),
+				fieldname: "site",
+				fieldtype: "Link",
+				options: "BM Site",
+				reqd: 1,
+				get_query: function () {
+					// ? Restrict sites only for the current bench
+					return {
+						filters: [["bench_name", "=", frm.doc.name]],
+					};
+				},
+				onchange: function () {
+					// ? On site selection, fetch the actual site_name
+					let site = dialog.get_value("site");
+					if (site) {
+						frappe.call({
+							method: "frappe.client.get_value",
+							args: {
+								doctype: "BM Site",
+								filters: { name: site },
+								fieldname: ["site_name"],
+							},
+							freeze: true,
+							freeze_message: __(`Fetching Site Name...`),
+							callback: function (response) {
+								// ? Auto-populate the readonly Site Name field
+								dialog.set_value("site_name", response.message.site_name);
+							},
+						});
+					}
+				},
+			},
+			{
+				label: __("Site Name"),
+				fieldname: "site_name",
+				fieldtype: "Data",
+				read_only: 1,
+				reqd: 1,
+			},
+			{
+				label: __("Database Files"),
+				fieldname: "db_files_path",
+				fieldtype: "Attach",
+				description:
+					"Upload the database backup file. Usually file name ends in .sql.gz or .sql",
+				reqd: 1,
+				options: { restrictions: { allowed_file_types: [".sql", ".sql.gz"] } },
+			},
+			{
+				label: __("Public Files"),
+				fieldname: "public_files_path",
+				fieldtype: "Attach",
+				description:
+					"Upload the public files backup. Usually file name ends in -files.tar",
+				reqd: 1,
+				options: { restrictions: { allowed_file_types: [".tar"] } },
+			},
+			{
+				label: __("Private Files"),
+				fieldname: "private_files_path",
+				fieldtype: "Attach",
+				description:
+					"Upload the private files backup. Usually file name ends in -private-files.tar",
+				reqd: 1,
+				options: { restrictions: { allowed_file_types: [".tar"] } },
+			},
+		],
+
+		// ? Primary action button: Restore Site
+		primary_action_label: __("Restore"),
+		primary_action(values) {
+			// ? Hide dialog after confirmation
+			dialog.hide();
+
+			// ? Call server-side method to restore the site
+			frappe.call({
+				method: "benchmate.api.actions.restore_site.execute",
+				args: {
+					bench_name: frm.doc.name,
+					bench_path: frm.doc.path,
+					site_name: values.site_name,
+					db_files_path: values.db_files_path,
+					public_files_path: values.public_files_path,
+					private_files_path: values.private_files_path,
+				},
+				freeze: true,
+				freeze_message: __(`Restoring Site ${values.site_name}...`),
 
 				// ? Handle callback after server execution
 				callback: function (r) {
