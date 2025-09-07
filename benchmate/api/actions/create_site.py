@@ -235,5 +235,5 @@ def execute(bench_name: str, bench_path: str, site_name: str):
 	return {
 		"success": True,
 		"message": f"Creating <b>{site_name}</b> in background Check <b>BM Log</b> for more details.",
-		"data": {"bench_path": bench_path},
+		"data": None,
 	}

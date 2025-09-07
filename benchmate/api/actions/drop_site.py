@@ -203,5 +203,5 @@ def execute(bench_name: str, bench_path: str, site_name: str):
 			f"Deleting site <b>{site_name}</b> in the background. "
 			f"Check the <b>BM Log</b> for more details."
 		),
-		"data": {"bench_path": bench_path},
+		"data": None,
 	}
